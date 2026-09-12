@@ -1,0 +1,54 @@
+# Resume-grounded interview question generator
+
+Implement a feature to dynamically generate deterministic interview questions based on actual candidate data (projects, experiences, skills) rather than generic templates. This works offline and avoids adding a new LLM service dependency, using predefined templates populated with candidate evidence.
+
+> [!NOTE]
+> The generated questions will be added to the Candidate Details Modal inside the Admin Dashboard. A recruiter can simply click on a candidate from the search results to view their specific, resume-grounded questions.
+
+## User Review Required
+
+Please review the proposed deterministic templates. These will be generated locally in the UI:
+1. **Experiences**: "Your resume mentions your role as **[title]** at **[firm]**. How did you validate your claimed outcomes during this time?"
+2. **Abilities**: "Your resume claims: **'[ability_snippet]'**. Can you walk me through how you achieved this?"
+3. **Matched Skills**: "You matched our requirement for **[skill]**. Can you describe a specific project where you applied this?"
+
+## Open Questions
+
+> [!IMPORTANT]
+> 1. Should the interview questions also be visible in the **Candidate Comparison** view, or is the Candidate Details modal in the Admin Dashboard sufficient?
+> 2. Are there any limits on the number of questions to generate (e.g., max 5 questions per candidate), or should we generate one for every experience/ability/skill available?
+
+## Proposed Changes
+
+### Backend Schemas
+#### [MODIFY] [search.py](file:///g:/Languages/Projects/AI%20Resume%20Intelligence/backend/app/schemas/search.py)
+- Update `CandidateMatch` schema to include `experiences` and `abilities` arrays. This is necessary because the search results currently only return a combined profile text and scores, missing the structured arrays for frontend templating.
+- Example addition:
+  ```python
+  experiences: List[Dict[str, Optional[str]]] = []
+  abilities: List[str] = []
+  ```
+
+---
+
+### Backend Routes
+#### [MODIFY] [search.py](file:///g:/Languages/Projects/AI%20Resume%20Intelligence/backend/app/routes/search.py)
+- Update the `/candidates` search endpoint.
+- When assembling the `CandidateMatch` response objects, extract and map `c.experiences` and `c.abilities` to the newly added schema fields so the frontend has access to them.
+
+---
+
+### Frontend Components
+#### [MODIFY] [AdminDashboard.jsx](file:///g:/Languages/Projects/AI%20Resume%20Intelligence/frontend/src/pages/AdminDashboard.jsx)
+- In the `expandedCandidate` modal, add a new section for "Resume-Grounded Interview Questions".
+- Implement a local function to generate the list of questions based on `expandedCandidate.experiences`, `expandedCandidate.abilities`, and `expandedCandidate.score_breakdown.matched_required`.
+- Render the generated questions as styled cards. Each card will show the question and a small badge or blockquote referencing the exact "evidence snippet" from the resume to fulfill the requirement that "The system does not fabricate projects or provide invented answers".
+
+## Verification Plan
+
+### Manual Verification
+1. Run a search for candidates in the Admin Dashboard.
+2. Click on a candidate to open their detailed modal.
+3. Verify that the "Resume-Grounded Interview Questions" section appears.
+4. Open two different candidate resumes and verify that the generated questions differ based on their unique experiences, abilities, and matched skills.
+5. Confirm that the questions display the correct attached "evidence snippet".
