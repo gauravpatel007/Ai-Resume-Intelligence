@@ -10,6 +10,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     role: str
+    name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -22,3 +23,14 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = None
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    reset_session_token: str
+    code: str
+    new_password: str

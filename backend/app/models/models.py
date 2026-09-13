@@ -23,6 +23,12 @@ class User(Base):
     # A user can be linked to a candidate profile
     candidate_profile = relationship("Candidate", back_populates="user", uselist=False)
 
+    @property
+    def name(self):
+        if self.candidate_profile and self.candidate_profile.name:
+            return self.candidate_profile.name
+        return None
+
 
 class Candidate(Base):
     __tablename__ = "candidates"
@@ -123,6 +129,17 @@ class UploadedResume(Base):
     extracted_text = Column(Text, nullable=True)
     
     candidate = relationship("Candidate", back_populates="resumes")
+
+class InterviewSession(Base):
+    __tablename__ = "interview_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"))
+    
+    role = Column(String, nullable=True) # Role the interview was generated for
+    date = Column(DateTime, default=datetime.utcnow)
+    
+    candidate = relationship("Candidate", backref="interviews")
 
 class ExportHistory(Base):
     __tablename__ = "export_history"

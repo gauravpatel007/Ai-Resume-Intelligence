@@ -17,12 +17,10 @@ import io
 import html
 import os
 
-from ..database.database import get_db, engine
-from ..models.models import User, Candidate, ExportHistory, Base
+from ..database.database import get_db
+from ..models.models import User, Candidate, ExportHistory
 from ..schemas.search import SearchQuery
 
-# Ensure tables exist (specifically ExportHistory which was added dynamically)
-Base.metadata.create_all(bind=engine)
 from ..utils.auth import get_current_user
 from ..utils.scoring import score_candidate
 from ..utils.learning import get_learning_advice

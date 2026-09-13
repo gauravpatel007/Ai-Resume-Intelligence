@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Download, MapPin, Mail, Phone, Briefcase, Award, Star, Zap, Loader2 } from 'lucide-react';
 
 const CandidateModal = ({ candidate, onClose, onExport, exportingId }) => {
@@ -36,11 +37,14 @@ const CandidateModal = ({ candidate, onClose, onExport, exportingId }) => {
   };
 
   const parsedData = parseProfileText(candidate.profile_text);
-  const matchScore = Math.round(candidate.score_breakdown?.total_score || 0);
+  const matchScore = Math.round(
+    candidate.score_breakdown?.total_score ??
+    (candidate.similarity_score !== undefined ? candidate.similarity_score * 100 : 0)
+  );
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
@@ -48,7 +52,7 @@ const CandidateModal = ({ candidate, onClose, onExport, exportingId }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-indigo-600 p-6 sm:p-8 shrink-0 relative">
+        <div className="bg-blue-600 p-6 sm:p-8 shrink-0 relative">
           <button 
             onClick={onClose}
             className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition-colors"
@@ -69,21 +73,21 @@ const CandidateModal = ({ candidate, onClose, onExport, exportingId }) => {
                   {matchScore}% Match
                 </span>
               </div>
-              <p className="text-indigo-100 font-medium text-lg mb-4">{candidate.role || candidate.predicted_job_role || 'Role Not Specified'}</p>
+              <p className="text-blue-100 font-medium text-lg mb-4">{candidate.role || candidate.predicted_job_role || 'Role Not Specified'}</p>
               
-              <div className="flex flex-wrap gap-4 text-sm text-indigo-50 font-medium">
+              <div className="flex flex-wrap gap-4 text-sm text-blue-50 font-medium">
                 <div className="flex items-center gap-1.5 bg-black/10 px-3 py-1.5 rounded-full">
-                  <Mail className="w-4 h-4 text-indigo-200" />
+                  <Mail className="w-4 h-4 text-blue-200" />
                   {candidate.email || 'No email provided'}
                 </div>
                 {candidate.phone && (
                   <div className="flex items-center gap-1.5 bg-black/10 px-3 py-1.5 rounded-full">
-                    <Phone className="w-4 h-4 text-indigo-200" />
+                    <Phone className="w-4 h-4 text-blue-200" />
                     {candidate.phone}
                   </div>
                 )}
                 <div className="flex items-center gap-1.5 bg-black/10 px-3 py-1.5 rounded-full">
-                  <MapPin className="w-4 h-4 text-indigo-200" />
+                  <MapPin className="w-4 h-4 text-blue-200" />
                   {candidate.profile_text?.split('\n')[0].replace('📍 LOCATION: ', '') || 'Location unknown'}
                 </div>
               </div>
@@ -102,10 +106,10 @@ const CandidateModal = ({ candidate, onClose, onExport, exportingId }) => {
               {/* Experience summary block */}
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-                  <Briefcase className="w-5 h-5 text-indigo-500" /> Professional Experience
+                  <Briefcase className="w-5 h-5 text-blue-600" /> Professional Experience
                 </h3>
                 <p className="text-slate-600 font-medium">
-                  Candidate possesses <span className="font-bold text-indigo-700">{candidate.calculated_experience_years || 0} years</span> of calculated experience.
+                  Candidate possesses <span className="font-bold text-blue-700">{candidate.calculated_experience_years || 0} years</span> of calculated experience.
                 </p>
               </div>
 
@@ -150,7 +154,7 @@ const CandidateModal = ({ candidate, onClose, onExport, exportingId }) => {
               <button 
                 onClick={() => onExport(candidate.candidate_id)}
                 disabled={exportingId === candidate.candidate_id}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-indigo-200 transition-all disabled:opacity-70 group"
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-blue-500/20 transition-all disabled:opacity-70 group"
               >
                 {exportingId === candidate.candidate_id ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -257,7 +261,8 @@ const CandidateModal = ({ candidate, onClose, onExport, exportingId }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

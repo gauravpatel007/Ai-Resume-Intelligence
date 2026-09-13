@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 from ..database.database import get_db
-from ..models.models import User, Candidate, Skill, Experience, Education, Ability
+from ..models.models import User, Candidate, Skill, Experience, Education, Ability, UploadedResume, InterviewSession
 from ..schemas.candidate import CandidateProfileResponse, CandidateUpdate, GapReportRequest, GapReportResponse, GapAdvice, InterviewGenerateRequest, InterviewGenerateResponse
 from ..utils.auth import get_current_user
 from ..utils.scoring import score_candidate, calculate_total_experience
 from ..utils.learning import get_learning_advice
-from ..utils.roles_catalog import get_all_roles
+from ..utils.roles_catalog import get_all_roles, get_role_by_name
+from ..services.interview_service import generate_questions
 
 router = APIRouter(prefix="/api/candidate", tags=["candidate"])
 
@@ -320,51 +321,130 @@ def generate_gap_report(
 @router.post("/interview/generate", response_model=InterviewGenerateResponse)
 def generate_interview(
     req: InterviewGenerateRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     if current_user.role != "candidate":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can access this")
         
-    questions = []
-    
-    role = req.job_role or "Professional"
-    pkg = req.package or "Standard"
-    exp = req.experience or "Any"
-    skills = req.skills or ""
-    
-    skill_list = [s.strip() for s in skills.split(',')] if skills else ["general concepts", "core technologies", "system design", "best practices"]
-    
-    is_mcq = (req.interview_type.lower() == "mcq")
-    
-    for i in range(1, 11):
-        target_skill = skill_list[i % len(skill_list)] if skill_list else "your field"
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if candidate:
+        new_session = InterviewSession(candidate_id=candidate.id, role=req.job_role)
+        db.add(new_session)
+        db.commit()
         
-        if is_mcq:
-            question_text = f"When working with {target_skill}, which of the following is considered a best practice for a {role}?"
-            options = [
-                f"Avoid using {target_skill} completely in production.",
-                f"Implement {target_skill} using standard scalable patterns.",
-                f"Hardcode all configurations for {target_skill}.",
-                f"Only use {target_skill} on local development servers."
-            ]
-            correct = options[1]
-            questions.append({
-                "id": i,
-                "question": question_text,
-                "options": options,
-                "correct_answer": correct
-            })
-        else:
-            if i % 2 == 0:
-                question_text = f"Can you describe a challenging problem you faced related to {target_skill} as a {role}, and how you resolved it given your {exp} experience?"
-            else:
-                question_text = f"How would you architect a solution utilizing {target_skill} that meets the expectations of a {pkg} compensation level?"
-            
-            questions.append({
-                "id": i,
-                "question": question_text,
-                "options": None,
-                "correct_answer": None
-            })
+    questions = generate_questions(
+        role=req.job_role,
+        package=req.package,
+        experience=req.experience,
+        skills=req.skills,
+        interview_type=req.interview_type
+    )
             
     return InterviewGenerateResponse(questions=questions)
+
+@router.get("/dashboard/stats")
+def get_dashboard_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role != "candidate":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can access this")
+        
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).options(
+        selectinload(Candidate.skills),
+        selectinload(Candidate.experiences),
+        selectinload(Candidate.educations)
+    ).first()
+    
+    if not candidate:
+        candidate = db.query(Candidate).filter(Candidate.email == current_user.email).first()
+        if candidate:
+            candidate.user_id = current_user.id
+            db.commit()
+            db.refresh(candidate)
+            candidate = db.query(Candidate).filter(Candidate.id == candidate.id).options(
+                selectinload(Candidate.skills),
+                selectinload(Candidate.experiences),
+                selectinload(Candidate.educations)
+            ).first()
+    
+    if not candidate:
+        return {"candidate_name": None, "resumes_analyzed": 0, "skill_score": 0, "interviews": 0, "profile_score": 0}
+        
+    resumes_analyzed = db.query(UploadedResume).filter(UploadedResume.candidate_id == candidate.id).count()
+    interviews = db.query(InterviewSession).filter(InterviewSession.candidate_id == candidate.id).count()
+    
+    # Profile Score Calculation
+    # 15% Basic Info (Name, Location)
+    # 15% Contact Info (Phone, LinkedIn)
+    # 30% Skills Added
+    # 20% Experience Added
+    # 20% Education Added
+    
+    score = 0
+    if candidate.name and candidate.city:
+        score += 15
+    elif candidate.name or candidate.city:
+        score += 7
+        
+    if candidate.phone and candidate.linkedin:
+        score += 15
+    elif candidate.phone or candidate.linkedin:
+        score += 7
+        
+    if candidate.skills or candidate.manual_skills:
+        score += 30
+        
+    if candidate.experiences:
+        score += 20
+        
+    if candidate.educations:
+        score += 20
+        
+    profile_score = score
+    
+    # Skill Score Calculation against target role
+    skill_score = 0
+    if candidate.target_role or candidate.predicted_job_role:
+        target = candidate.target_role or candidate.predicted_job_role
+        role_data = get_role_by_name(target)
+        
+        req_skills = role_data.get("req_skills", []) if role_data else []
+        pref_skills = role_data.get("pref_skills", []) if role_data else []
+        
+        extracted_skills = [{"name": s.name} for s in candidate.skills] if candidate.skills else []
+        manual_skills = [{"name": s.strip()} for s in (candidate.manual_skills or '').split(',') if s.strip()]
+        setattr(candidate, "all_skills", extracted_skills + manual_skills)
+        
+        score_result = score_candidate(
+            candidate=candidate,
+            target_role=target,
+            req_skills=req_skills,
+            pref_skills=pref_skills,
+            min_exp=0,
+            include_explanations=False
+        )
+        
+        # skills_score is max 40. We want a percentage (0-100) for the UI "Skill Score".
+        skills_part = score_result.get("skills_score", 0.0)
+        
+        all_candidate_skills = (candidate.skills or []) + (candidate.manual_skills.split(',') if getattr(candidate, 'manual_skills', None) else [])
+        all_candidate_skills = [s for s in all_candidate_skills if s and str(s).strip()]
+        
+        # If there are no required skills (e.g. role not matched), score_candidate gives free points (40).
+        # We don't want to show 100% just because they have 1 skill.
+        if not req_skills:
+            if not all_candidate_skills:
+                skill_score = 0
+            else:
+                # Baseline scoring: assume a strong profile has about 10 skills
+                skill_score = min(len(all_candidate_skills) * 10, 100)
+        else:
+            skill_score = int((skills_part / 40.0) * 100)
+
+            
+    return {
+        "candidate_name": candidate.name if candidate and candidate.name else None,
+        "resumes_analyzed": resumes_analyzed,
+        "skill_score": skill_score,
+        "interviews": interviews,
+        "profile_score": profile_score
+    }

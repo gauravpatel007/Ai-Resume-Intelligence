@@ -17,7 +17,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 @router.post("/resume")
-async def upload_resume(
+def upload_resume(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -41,7 +41,7 @@ async def upload_resume(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are allowed")
 
     # 2. Read and Validate File Size
-    file_bytes = await file.read()
+    file_bytes = file.file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File size exceeds the 5MB limit")
 
@@ -167,6 +167,15 @@ async def upload_resume(
     db.commit()
     db.refresh(new_resume)
 
+    # Invalidate semantic cache so new resume is included in search
+    try:
+        from .search import _semantic_cache, TEXT_CACHE_FILE
+        _semantic_cache["data"] = None
+        if os.path.exists(TEXT_CACHE_FILE):
+            os.remove(TEXT_CACHE_FILE)
+    except Exception:
+        pass
+
     # 7. Return response
     return {
         "status": "success",
@@ -175,3 +184,74 @@ async def upload_resume(
         "parsed_data": parsed_data,
         "extracted_preview": extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text
     }
+
+
+@router.get("/resume/latest")
+def get_latest_resume(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role != "candidate":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can fetch resumes")
+        
+    candidate = current_user.candidate_profile
+    if not candidate:
+        return {"has_resume": False}
+
+    latest_resume = db.query(UploadedResume).filter(UploadedResume.candidate_id == candidate.id).order_by(UploadedResume.upload_date.desc()).first()
+    
+    if not latest_resume:
+        return {"has_resume": False}
+        
+    try:
+        parsed_data = parse_resume_text(latest_resume.extracted_text, db)
+        
+        filename = os.path.basename(latest_resume.file_path)
+        if len(filename) > 37 and filename[36] == '_':
+            filename = filename[37:]
+            
+        from ..utils.nlp import standardize_degree
+        degree_data = standardize_degree(latest_resume.extracted_text)
+        parsed_data["extracted_degree"] = degree_data.get("degree")
+        parsed_data["predicted_role"] = candidate.predicted_job_role
+            
+        return {
+            "has_resume": True,
+            "resume_id": latest_resume.id,
+            "filename": filename,
+            "upload_date": latest_resume.upload_date,
+            "parsed_data": parsed_data,
+            "extracted_preview": latest_resume.extracted_text[:500] + "..." if len(latest_resume.extracted_text) > 500 else latest_resume.extracted_text
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load resume data: {str(e)}")
+
+
+@router.delete("/resume")
+def delete_resume(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role != "candidate":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can delete resumes")
+        
+    candidate = current_user.candidate_profile
+    if not candidate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate profile not found")
+
+    resumes = db.query(UploadedResume).filter(UploadedResume.candidate_id == candidate.id).all()
+    if not resumes:
+        return {"status": "success", "message": "No resumes found"}
+        
+    for res in resumes:
+        if os.path.exists(res.file_path):
+            try:
+                os.remove(res.file_path)
+            except:
+                pass
+        db.delete(res)
+
+    db.commit()
+
+    return {"status": "success", "message": "Uploaded resume removed successfully. Profile data retained."}
+

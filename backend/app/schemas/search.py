@@ -68,3 +68,26 @@ class ExploreQuery(BaseModel):
     location: Optional[str] = None
     limit: int = Field(default=16, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
+    
+class SemanticSearchQuery(BaseModel):
+    job_description: str = Field(..., description="The pasted job description text")
+    method: str = Field(default="tfidf", description="Matching method: 'tfidf' or 'semantic'")
+    required_skills: List[str] = Field(default=[], description="List of required explicit skills")
+    top_k: int = Field(default=5, ge=1, le=50)
+
+class SemanticMatchResult(BaseModel):
+    candidate_id: int
+    name: Optional[str]
+    similarity_score: float
+    evidence: str
+    missing_required: List[str] = []
+    matched_required: List[str] = []
+    role: Optional[str] = None
+    predicted_job_role: Optional[str] = None
+    calculated_experience_years: Optional[float] = None
+    education_level: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    skills: List[str] = []
+    profile_text: Optional[str] = None
+

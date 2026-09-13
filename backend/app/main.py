@@ -4,20 +4,32 @@ from .database.database import engine, Base
 from .models import models # Import models to register them with Base
 from .routes import auth, upload, search, export, candidate
 
-# Create the database tables
-Base.metadata.create_all(bind=engine)
-
-# Auto-migrate candidates table (ignoring errors if columns already exist)
+import logging
 from sqlalchemy import text
-with engine.connect() as conn:
-    try:
-        conn.execute(text("ALTER TABLE candidates ADD COLUMN alternative_roles TEXT"))
-        conn.execute(text("ALTER TABLE candidates ADD COLUMN is_role_uncertain BOOLEAN DEFAULT FALSE"))
-        conn.commit()
-    except Exception as e:
-        # Columns likely already exist
-        conn.rollback()
+
+logger = logging.getLogger("uvicorn.error")
+
 app = FastAPI(title="AI Resume Intelligence API")
+
+@app.on_event("startup")
+def startup_event():
+    logger.info("Verifying PostgreSQL database connection and tables...")
+    try:
+        # Create database tables
+        Base.metadata.create_all(bind=engine)
+        
+        # Auto-migrate candidates table
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE candidates ADD COLUMN IF NOT EXISTS alternative_roles TEXT"))
+                conn.execute(text("ALTER TABLE candidates ADD COLUMN IF NOT EXISTS is_role_uncertain BOOLEAN DEFAULT FALSE"))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+        logger.info("Database connection and schema verified successfully.")
+    except Exception as e:
+        logger.error(f"PostgreSQL connection error on startup: {e}")
+        logger.error("Please verify that your PostgreSQL service is running on port 5432!")
 
 # Configure CORS
 origins = [

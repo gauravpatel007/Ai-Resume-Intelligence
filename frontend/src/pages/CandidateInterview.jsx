@@ -35,8 +35,23 @@ const CandidateInterview = () => {
       .catch(err => console.error("Could not fetch roles catalog", err));
   }, []);
 
+  const resetGeneratedState = () => {
+    setQuestions([]);
+    setSubmitted(false);
+    setAnswers({});
+    setScore(null);
+    setNormalAnswers({});
+    setError("");
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    resetGeneratedState();
+  };
+
+  const handleModeChange = (mode) => {
+    setFormData({ ...formData, interview_type: mode });
+    resetGeneratedState();
   };
 
   const handleGenerate = async () => {
@@ -46,12 +61,8 @@ const CandidateInterview = () => {
     }
 
     setLoading(true);
-    setError("");
-    setQuestions([]);
-    setSubmitted(false);
-    setAnswers({});
-    setScore(null);
-    setNormalAnswers({});
+    resetGeneratedState();
+    setLoading(true);
 
     try {
       const response = await api.post('/candidate/interview/generate', formData);
@@ -72,8 +83,9 @@ const CandidateInterview = () => {
   };
 
   const handleSubmitInterview = () => {
-    setSubmitted(true);
     if (formData.interview_type === 'mcq') {
+      setError("");
+      setSubmitted(true);
       let correctCount = 0;
       questions.forEach(q => {
         if (answers[q.id] === q.correct_answer) {
@@ -83,7 +95,8 @@ const CandidateInterview = () => {
       setScore(correctCount);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      // Normal interview submitted logic
+      setError("");
+      setSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -108,7 +121,7 @@ const CandidateInterview = () => {
               name="job_role"
               value={formData.job_role}
               onChange={handleChange}
-              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select a Role</option>
               {rolesCatalog.map((r, i) => (
@@ -123,7 +136,7 @@ const CandidateInterview = () => {
               name="package"
               value={formData.package}
               onChange={handleChange}
-              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select Package Tier</option>
               <option value="< 5 LPA">Less than 5 LPA (Fresher)</option>
@@ -141,7 +154,7 @@ const CandidateInterview = () => {
               value={formData.skills}
               onChange={handleChange}
               placeholder="e.g. React, Node.js, Python"
-              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
@@ -151,7 +164,7 @@ const CandidateInterview = () => {
               name="experience"
               value={formData.experience}
               onChange={handleChange}
-              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select Experience</option>
               <option value="Fresher">Fresher (0 years)</option>
@@ -166,10 +179,10 @@ const CandidateInterview = () => {
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Interview Type</label>
           <div className="flex gap-4">
             <button
-              onClick={() => setFormData({ ...formData, interview_type: 'mcq' })}
+              onClick={() => handleModeChange('mcq')}
               className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all font-bold ${
                 formData.interview_type === 'mcq'
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm'
+                  ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
                   : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
               }`}
             >
@@ -177,10 +190,10 @@ const CandidateInterview = () => {
               <span className="block text-xs font-normal opacity-80 mt-1">10 Multiple Choice Questions</span>
             </button>
             <button
-              onClick={() => setFormData({ ...formData, interview_type: 'normal' })}
+              onClick={() => handleModeChange('normal')}
               className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all font-bold ${
                 formData.interview_type === 'normal'
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm'
+                  ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
                   : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
               }`}
             >
@@ -193,7 +206,7 @@ const CandidateInterview = () => {
         <button
           onClick={handleGenerate}
           disabled={loading || !formData.job_role}
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl shadow-md disabled:opacity-50 transition-all flex justify-center items-center gap-2"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50 transition-all flex justify-center items-center gap-2"
         >
           {loading ? (
             <>
@@ -270,8 +283,8 @@ const CandidateInterview = () => {
                           const isCorrect = submitted && opt === q.correct_answer;
                           const isWrongSelection = submitted && isSelected && !isCorrect;
                           
-                          let optionClass = "border-slate-200 hover:border-indigo-300 hover:bg-slate-50 text-slate-700";
-                          if (isSelected && !submitted) optionClass = "border-indigo-600 bg-indigo-50 text-indigo-800 ring-1 ring-indigo-600";
+                          let optionClass = "border-slate-200 hover:border-blue-300 hover:bg-slate-50 text-slate-700";
+                          if (isSelected && !submitted) optionClass = "border-blue-600 bg-blue-50 text-blue-800 ring-1 ring-blue-600";
                           
                           if (submitted) {
                             if (isCorrect) optionClass = "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500";
@@ -288,7 +301,7 @@ const CandidateInterview = () => {
                                 checked={isSelected}
                                 onChange={() => !submitted && handleMCQChange(q.id, opt)}
                                 disabled={submitted}
-                                className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                                className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
                               />
                               <span className="ml-3 font-medium text-sm">{opt}</span>
                               
@@ -309,7 +322,7 @@ const CandidateInterview = () => {
                           onChange={(e) => handleNormalChange(q.id, e.target.value)}
                           disabled={submitted}
                           placeholder="Type your answer here..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 min-h-[120px] focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-700"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 min-h-[120px] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-slate-700"
                         ></textarea>
                       </div>
                     )}

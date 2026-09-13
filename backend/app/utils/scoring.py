@@ -93,7 +93,8 @@ def score_candidate(
     pref_skills: List[str], 
     min_exp: int,
     req_degree: str = "Any",
-    profile_text: str = ""
+    profile_text: str = "",
+    include_explanations: bool = True
 ) -> Dict[str, Any]:
     """
     Transparent Scoring Algorithm
@@ -142,31 +143,33 @@ def score_candidate(
     for rs in req_skills_lower:
         if rs in all_candidate_skills:
             matched_req.append(rs)
-            snippet = find_snippet(rs, profile_text)
-            clean_snip = snippet.strip("•*- \t'\"")
-            
-            if rs in candidate_extracted_skills:
-                finding = "Verified"
-                evidence = f'"{clean_snip}"' if clean_snip else "Found in AI extracted skills."
-            elif clean_snip:
-                finding = "Evidence found"
-                evidence = f'"{clean_snip}"'
-            else:
-                finding = "Not verified"
-                evidence = "Manually added. No textual evidence found."
+            if include_explanations:
+                snippet = find_snippet(rs, profile_text)
+                clean_snip = snippet.strip("•*- \t'\"")
                 
-            explanations.append({
-                "requirement": rs.title(),
-                "finding": finding,
-                "evidence": evidence
-            })
+                if rs in candidate_extracted_skills:
+                    finding = "Verified"
+                    evidence = f'"{clean_snip}"' if clean_snip else "Found in AI extracted skills."
+                elif clean_snip:
+                    finding = "Evidence found"
+                    evidence = f'"{clean_snip}"'
+                else:
+                    finding = "Not verified"
+                    evidence = "Manually added. No textual evidence found."
+                    
+                explanations.append({
+                    "requirement": rs.title(),
+                    "finding": finding,
+                    "evidence": evidence
+                })
         else:
             missing_req.append(rs)
-            explanations.append({
-                "requirement": rs.title(),
-                "finding": "Not found",
-                "evidence": "No matching evidence located"
-            })
+            if include_explanations:
+                explanations.append({
+                    "requirement": rs.title(),
+                    "finding": "Not found",
+                    "evidence": "No matching evidence located"
+                })
             
     req_score = 0
     if req_skills_lower:
@@ -180,24 +183,25 @@ def score_candidate(
     for ps in pref_skills_lower:
         if ps in all_candidate_skills:
             matched_pref.append(ps)
-            snippet = find_snippet(ps, profile_text)
-            clean_snip = snippet.strip("•*- \t'\"")
-            
-            if ps in candidate_extracted_skills:
-                finding = "Verified"
-                evidence = f'"{clean_snip}"' if clean_snip else "Found in AI extracted skills."
-            elif clean_snip:
-                finding = "Evidence found"
-                evidence = f'"{clean_snip}"'
-            else:
-                finding = "Not verified"
-                evidence = "Manually added. No textual evidence found."
+            if include_explanations:
+                snippet = find_snippet(ps, profile_text)
+                clean_snip = snippet.strip("•*- \t'\"")
                 
-            explanations.append({
-                "requirement": ps.title() + " (Preferred)",
-                "finding": finding,
-                "evidence": evidence
-            })
+                if ps in candidate_extracted_skills:
+                    finding = "Verified"
+                    evidence = f'"{clean_snip}"' if clean_snip else "Found in AI extracted skills."
+                elif clean_snip:
+                    finding = "Evidence found"
+                    evidence = f'"{clean_snip}"'
+                else:
+                    finding = "Not verified"
+                    evidence = "Manually added. No textual evidence found."
+                    
+                explanations.append({
+                    "requirement": ps.title() + " (Preferred)",
+                    "finding": finding,
+                    "evidence": evidence
+                })
     pref_score = 0
     if pref_skills_lower:
         pref_ratio = len(matched_pref) / len(pref_skills_lower)
@@ -210,25 +214,29 @@ def score_candidate(
     breakdown["skills_score"] = round(skills_score, 1)
     
     # 2. Experience Match (25%)
-    exp_years = calculate_total_experience(candidate.experiences)
+    exp_years = getattr(candidate, 'total_experience_years', None)
+    if exp_years is None:
+        exp_years = calculate_total_experience(candidate.experiences)
     breakdown["calculated_experience_years"] = exp_years
     
     exp_score = 0.0
     if min_exp and min_exp > 0:
         if exp_years >= min_exp:
             exp_score = 25.0
-            explanations.append({
-                "requirement": f"{min_exp} years of experience",
-                "finding": "Meets requirement",
-                "evidence": f"Calculated {exp_years} years from employment history."
-            })
+            if include_explanations:
+                explanations.append({
+                    "requirement": f"{min_exp} years of experience",
+                    "finding": "Meets requirement",
+                    "evidence": f"Calculated {exp_years} years from employment history."
+                })
         else:
             exp_score = (exp_years / min_exp) * 25.0
-            explanations.append({
-                "requirement": f"{min_exp} years of experience",
-                "finding": "Below requirement",
-                "evidence": f"Candidate has {exp_years} years vs {min_exp} years required."
-            })
+            if include_explanations:
+                explanations.append({
+                    "requirement": f"{min_exp} years of experience",
+                    "finding": "Below requirement",
+                    "evidence": f"Candidate has {exp_years} years vs {min_exp} years required."
+                })
     else:
         exp_score = 25.0 # Free points if 0 required
             
@@ -243,28 +251,31 @@ def score_candidate(
         # Check ML Predicted Role
         if candidate.predicted_job_role and target_role_lower in candidate.predicted_job_role.lower():
             role_score = 20.0
-            explanations.append({
-                "requirement": f"Role: {target_role.title()}",
-                "finding": "Predicted Role Match",
-                "evidence": f"AI model classified profile as '{candidate.predicted_job_role}'."
-            })
+            if include_explanations:
+                explanations.append({
+                    "requirement": f"Role: {target_role.title()}",
+                    "finding": "Predicted Role Match",
+                    "evidence": f"AI model classified profile as '{candidate.predicted_job_role}'."
+                })
         else:
             # Check Past Experience Titles
             past_titles = [e.title.lower() for e in candidate.experiences if e.title]
             if any(target_role_lower in t for t in past_titles):
                 role_score = 15.0 # Partial credit if they had it in the past but not predicted as primary
                 matched_title = next(t for t in past_titles if target_role_lower in t)
-                explanations.append({
-                    "requirement": f"Role: {target_role.title()}",
-                    "finding": "Past Experience Match",
-                    "evidence": f"Held past role containing '{matched_title.title()}'."
-                })
+                if include_explanations:
+                    explanations.append({
+                        "requirement": f"Role: {target_role.title()}",
+                        "finding": "Past Experience Match",
+                        "evidence": f"Held past role containing '{matched_title.title()}'."
+                    })
             else:
-                explanations.append({
-                    "requirement": f"Role: {target_role.title()}",
-                    "finding": "Not found",
-                    "evidence": f"Target role missing from prediction and past titles."
-                })
+                if include_explanations:
+                    explanations.append({
+                        "requirement": f"Role: {target_role.title()}",
+                        "finding": "Not found",
+                        "evidence": f"Target role missing from prediction and past titles."
+                    })
                 
     score += role_score
     breakdown["role_score"] = round(role_score, 1)
@@ -303,19 +314,22 @@ def score_candidate(
     if req_level > 0:
         if highest_level >= req_level:
             edu_score = 10.0
-            explanations.append({
-                "requirement": f"Degree: {deg_req_label}",
-                "finding": "Requirement met",
-                "evidence": f"Found {highest_edu_obj.degree} from {highest_edu_obj.institution or 'institution'}." if highest_edu_obj else "Degree level met."
-            })
+            if include_explanations:
+                explanations.append({
+                    "requirement": deg_req_label,
+                    "finding": "Meets requirement",
+                    "evidence": f"Candidate has a {highest_edu_obj.degree} from {highest_edu_obj.institution}." if highest_edu_obj else "Candidate degree level meets requirements."
+                })
         else:
-            edu_score = 0.0 # Penalty for missing required degree
-            explanations.append({
-                "requirement": f"Degree: {deg_req_label}",
-                "finding": "Not found",
-                "evidence": "Highest recorded degree does not meet requirement."
-            })
-    else: # Any
+            edu_score = 0.0
+            if include_explanations:
+                found_str = highest_edu_obj.degree if highest_edu_obj else "No degree found"
+                explanations.append({
+                    "requirement": deg_req_label,
+                    "finding": "Below requirement",
+                    "evidence": f"Found {found_str}."
+                })
+    else:
         edu_score = 10.0 if candidate.educations else 0.0
         
     edu_ab_score = edu_score + ab_score

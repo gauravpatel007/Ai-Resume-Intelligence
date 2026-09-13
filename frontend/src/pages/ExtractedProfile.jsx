@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../api/axios';
 
 const POPULAR_SKILL_SUGGESTIONS = [
@@ -10,7 +11,7 @@ const TARGET_ROLE_OPTIONS = [
   "Full Stack Developer", "DevOps Engineer", "Data Engineer", "Cloud Architect"
 ];
 
-const ExtractedProfile = ({ setCurrentView }) => {
+const ExtractedProfile = ({ setCurrentView, onProfileUpdate }) => {
   const [profile, setProfile] = useState({
     name: '',
     email: '',
@@ -81,6 +82,9 @@ const ExtractedProfile = ({ setCurrentView }) => {
         educations: data.educations || [],
         abilities: data.abilities || []
       });
+      if (onProfileUpdate && data?.name) {
+        onProfileUpdate(data.name);
+      }
     } catch (err) {
       if (err.response?.status === 401) {
         setError("Your session has expired. Please log in again.");
@@ -171,6 +175,9 @@ const ExtractedProfile = ({ setCurrentView }) => {
           educations: d.educations ?? prev.educations,
           abilities: d.abilities ?? prev.abilities
         }));
+        if (onProfileUpdate && d.name) {
+          onProfileUpdate(d.name);
+        }
       }
 
       setSuccess("Profile and all changes saved to database successfully!");
@@ -316,7 +323,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center h-80">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
         <p className="text-slate-500 font-medium">Loading Candidate Profile...</p>
       </div>
     );
@@ -331,7 +338,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
+            <span className="text-xs font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
               Candidate Profile
             </span>
             {lastSaved && (
@@ -348,7 +355,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm"
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all flex items-center gap-2 text-sm"
         >
           {saving ? (
             <>
@@ -382,7 +389,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
       {/* HERO AVATAR & STATS BANNER */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-black shadow-md">
+          <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-md shadow-blue-500/20 shrink-0">
             {(profile.name || profile.email || 'U').slice(0, 2).toUpperCase()}
           </div>
           <div>
@@ -393,7 +400,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               </span>
             </div>
             <p className="text-slate-500 text-sm">{profile.email}</p>
-            <p className="text-xs font-bold text-indigo-600 mt-1">
+            <p className="text-xs font-bold text-blue-600 mt-1">
               Current: {profile.current_role || "Not specified"} &bull; Target: {profile.target_role || "Not specified"}
             </p>
           </div>
@@ -408,9 +415,9 @@ const ExtractedProfile = ({ setCurrentView }) => {
             <p className="text-2xl font-black text-emerald-700">{verifiedSkillsCount}</p>
             <p className="text-[11px] font-bold uppercase text-emerald-600">Verified</p>
           </div>
-          <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-center min-w-[100px] flex-1 md:flex-none">
-            <p className="text-2xl font-black text-indigo-700">{manualSkillsCount}</p>
-            <p className="text-[11px] font-bold uppercase text-indigo-600">Self-Added</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-center min-w-[100px] flex-1 md:flex-none">
+            <p className="text-2xl font-black text-blue-700">{manualSkillsCount}</p>
+            <p className="text-[11px] font-bold uppercase text-blue-600">Self-Added</p>
           </div>
         </div>
       </div>
@@ -419,7 +426,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
               👤
             </div>
             <h3 className="text-lg font-bold text-slate-800">Personal Information</h3>
@@ -436,7 +443,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.name}
               onChange={handleInputChange}
               placeholder="e.g. Gaurav Patel"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
           </div>
 
@@ -463,7 +470,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.phone}
               onChange={handleInputChange}
               placeholder="+1 555-0199"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
           </div>
 
@@ -475,7 +482,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.city}
               onChange={handleInputChange}
               placeholder="e.g. San Francisco"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
           </div>
 
@@ -487,7 +494,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.state}
               onChange={handleInputChange}
               placeholder="e.g. California"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
           </div>
 
@@ -499,7 +506,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.country}
               onChange={handleInputChange}
               placeholder="e.g. USA"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
           </div>
 
@@ -511,7 +518,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.linkedin}
               onChange={handleInputChange}
               placeholder="https://linkedin.com/in/yourprofile"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
           </div>
         </div>
@@ -520,7 +527,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
       {/* SECTION 2: CAREER & ROLES */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
         <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
             💼
           </div>
           <h3 className="text-lg font-bold text-slate-800">Career Trajectory & Target Roles</h3>
@@ -535,7 +542,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.current_role}
               onChange={handleInputChange}
               placeholder="e.g. Junior Python Developer"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
           </div>
 
@@ -547,7 +554,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.target_role}
               onChange={handleInputChange}
               placeholder="e.g. ML Engineer"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
               {TARGET_ROLE_OPTIONS.slice(0, 4).map(role => (
@@ -555,7 +562,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
                   key={role}
                   type="button"
                   onClick={() => setProfile(prev => ({ ...prev, target_role: role }))}
-                  className="text-[11px] bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 px-2 py-0.5 rounded-md transition font-medium"
+                  className="text-[11px] bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 px-2 py-0.5 rounded-md transition font-medium"
                 >
                   + {role}
                 </button>
@@ -578,7 +585,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               value={profile.predicted_job_role}
               onChange={handleInputChange}
               placeholder="e.g. Machine Learning Engineer"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
             />
             
             {profile.alternative_roles && profile.alternative_roles.length > 0 ? (
@@ -616,7 +623,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
             <span className="flex items-center gap-1 font-bold text-emerald-700">
               ✅ Verified (Resume Extracted)
             </span>
-            <span className="flex items-center gap-1 font-bold text-indigo-700">
+            <span className="flex items-center gap-1 font-bold text-blue-700">
               ⚪ Manually Added
             </span>
           </div>
@@ -630,12 +637,12 @@ const ExtractedProfile = ({ setCurrentView }) => {
             onChange={(e) => setNewSkillInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }}
             placeholder="Type a new skill name and press Enter (e.g. Rust, PyTorch, GraphQL)..."
-            className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-medium"
+            className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition font-medium"
           />
           <button
             type="button"
             onClick={() => handleAddSkill()}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-xs transition"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md shadow-blue-500/20 transition"
           >
             + Add Skill
           </button>
@@ -649,7 +656,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               key={s}
               type="button"
               onClick={() => handleAddSkill(s)}
-              className="text-xs bg-slate-100 hover:bg-indigo-100 hover:text-indigo-800 text-slate-700 px-2.5 py-1 rounded-lg transition font-medium"
+              className="text-xs bg-slate-100 hover:bg-blue-100 hover:text-blue-800 text-slate-700 px-2.5 py-1 rounded-lg transition font-medium"
             >
               + {s}
             </button>
@@ -664,7 +671,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               <div
                 key={index}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition shadow-xs ${isManual
-                    ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900'
+                    ? 'bg-blue-50/70 border-blue-200 text-blue-900'
                     : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
                   }`}
               >
@@ -681,7 +688,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
                   type="text"
                   value={skill.name}
                   onChange={(e) => handleEditSkillName(index, e.target.value)}
-                  className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white px-1 py-0.5 rounded outline-none font-bold text-xs"
+                  className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white px-1 py-0.5 rounded outline-none font-bold text-xs"
                 />
 
                 <button
@@ -800,7 +807,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               <button
                 type="button"
                 onClick={handleAddExperience}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                className="text-xs font-bold text-blue-600 hover:text-blue-800"
               >
                 + Add your first work experience
               </button>
@@ -909,7 +916,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
               <button
                 type="button"
                 onClick={handleAddEducation}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                className="text-xs font-bold text-blue-600 hover:text-blue-800"
               >
                 + Add your degree or education
               </button>
@@ -998,7 +1005,7 @@ const ExtractedProfile = ({ setCurrentView }) => {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl text-xs shadow-md hover:shadow-lg hover:shadow-indigo-500/25 transition-all flex items-center gap-2"
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all flex items-center gap-2"
         >
           {saving ? (
             <>
@@ -1015,9 +1022,9 @@ const ExtractedProfile = ({ setCurrentView }) => {
       </div>
 
       {/* RESET PERMISSION CONFIRMATION MODAL */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+      {showResetConfirm && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1054,7 +1061,8 @@ const ExtractedProfile = ({ setCurrentView }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

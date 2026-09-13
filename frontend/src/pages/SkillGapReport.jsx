@@ -192,7 +192,7 @@ const SkillGapReport = ({ setCurrentView }) => {
   if (initialLoading) {
     return (
       <div className="flex flex-col justify-center items-center h-72">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
         <p className="text-slate-500 font-medium">Loading Skill Gap Intelligence...</p>
       </div>
     );
@@ -208,10 +208,10 @@ const SkillGapReport = ({ setCurrentView }) => {
           <h2 className="text-2xl font-bold text-slate-800 mb-4">No skills found in your profile yet</h2>
           <p className="text-slate-600 max-w-lg mx-auto mb-8">Upload a resume or manually add your skills in "My Profile" to run gap analysis against target IT roles.</p>
           <div className="flex items-center justify-center gap-4">
-            <button onClick={() => setCurrentView('upload')} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition">
+            <button onClick={() => setCurrentView('upload')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 transition">
               Upload Resume
             </button>
-            <button onClick={() => setCurrentView('profile')} className="px-6 py-3 bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded-xl font-bold transition shadow-sm">
+            <button onClick={() => setCurrentView('profile')} className="px-6 py-3 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-xl font-bold transition shadow-sm">
               Add Skills Manually
             </button>
           </div>
@@ -233,13 +233,13 @@ const SkillGapReport = ({ setCurrentView }) => {
           <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200">
             <button 
               onClick={() => setIsCustomMode(false)}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition ${!isCustomMode ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition ${!isCustomMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
             >
               Role Catalog (40+ Roles)
             </button>
             <button 
               onClick={() => setIsCustomMode(true)}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition ${isCustomMode ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition ${isCustomMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
             >
               + Custom Role Spec
             </button>
@@ -263,7 +263,7 @@ const SkillGapReport = ({ setCurrentView }) => {
                   placeholder="Search 40+ IT roles (e.g. Backend, DevOps, Data Scientist, SRE)..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
                 <svg className="w-5 h-5 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               </div>
@@ -273,7 +273,7 @@ const SkillGapReport = ({ setCurrentView }) => {
                   <button 
                     key={domain}
                     onClick={() => setActiveTab(domain)}
-                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition ${activeTab === domain ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition ${activeTab === domain ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                   >
                     {domain}
                   </button>
@@ -289,14 +289,14 @@ const SkillGapReport = ({ setCurrentView }) => {
                   <div 
                     key={role.name} 
                     onClick={() => setSelectedRole(role)}
-                    className={`cursor-pointer p-4 rounded-xl border transition text-left ${isSelected ? 'border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-500 shadow-sm' : 'border-slate-200 hover:border-indigo-300 hover:shadow-sm bg-white'}`}
+                    className={`cursor-pointer p-4 rounded-xl border transition text-left ${isSelected ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500 shadow-sm' : 'border-slate-200 hover:border-blue-300 hover:shadow-sm bg-white'}`}
                   >
                     <div className="flex justify-between items-start mb-1.5">
-                      <span className="text-[10px] uppercase font-extrabold tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                      <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                         {role.domain}
                       </span>
                       {isSelected && (
-                        <span className="text-xs font-bold text-indigo-600 flex items-center gap-1">
+                        <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
                           ✓ Selected
                         </span>
                       )}
@@ -328,7 +328,7 @@ const SkillGapReport = ({ setCurrentView }) => {
               <button 
                 onClick={handleGenerateReport} 
                 disabled={loading || !selectedRole}
-                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -347,11 +347,11 @@ const SkillGapReport = ({ setCurrentView }) => {
         ) : (
           /* Custom Role Builder */
           <div className="space-y-6">
-            <div className="bg-indigo-50 border border-indigo-100 text-indigo-800 p-4 rounded-xl text-sm flex gap-3">
-              <svg className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div className="bg-blue-50 border border-blue-100 text-blue-800 p-4 rounded-xl text-sm flex gap-3">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <div>
                 <p className="font-semibold">Define Any Job Specification</p>
-                <p className="text-xs text-indigo-700 mt-0.5">Enter any custom or niche job role and its skill requirements. The intelligence engine will evaluate your profile against it.</p>
+                <p className="text-xs text-blue-700 mt-0.5">Enter any custom or niche job role and its skill requirements. The intelligence engine will evaluate your profile against it.</p>
               </div>
             </div>
             
@@ -363,7 +363,7 @@ const SkillGapReport = ({ setCurrentView }) => {
                   value={customRoleData.name}
                   onChange={(e) => setCustomRoleData({...customRoleData, name: e.target.value})}
                   placeholder="e.g., Staff AI Infrastructure Engineer"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div>
@@ -373,27 +373,27 @@ const SkillGapReport = ({ setCurrentView }) => {
                   min="0"
                   value={customRoleData.min_exp}
                   onChange={(e) => setCustomRoleData({...customRoleData, min_exp: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Required Skills (Comma separated) *</label>
                 <input 
-                  type="text"
+                  type="text" 
                   value={customRoleData.req_skills}
                   onChange={(e) => setCustomRoleData({...customRoleData, req_skills: e.target.value})}
                   placeholder="e.g. Python, Kubernetes, Terraform, Rust, CI/CD"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Preferred / Nice-to-have Skills (Comma separated)</label>
                 <input 
-                  type="text"
+                  type="text" 
                   value={customRoleData.pref_skills}
                   onChange={(e) => setCustomRoleData({...customRoleData, pref_skills: e.target.value})}
                   placeholder="e.g. AWS, PyTorch, Prometheus, ArgoCD"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
             </div>
@@ -402,7 +402,7 @@ const SkillGapReport = ({ setCurrentView }) => {
               <button 
                 onClick={handleGenerateReport} 
                 disabled={loading || !customRoleData.name.trim() || !customRoleData.req_skills.trim()}
-                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-2"
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition flex items-center gap-2"
               >
                 {loading ? (
                   <>
@@ -513,7 +513,7 @@ const SkillGapReport = ({ setCurrentView }) => {
           {report.missing_skills && report.missing_skills.length > 0 && (
             <div>
               <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
                 Targeted Learning & Project Roadmap
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -521,13 +521,13 @@ const SkillGapReport = ({ setCurrentView }) => {
                   const skillName = typeof item === 'object' ? item.skill : item;
                   const advice = typeof item === 'object' ? item.advice : "Build a project demonstrating this skill.";
                   return (
-                    <div key={idx} className="bg-indigo-50/40 border border-indigo-100 p-5 rounded-2xl flex flex-col justify-between">
+                    <div key={idx} className="bg-blue-50/40 border border-blue-100 p-5 rounded-2xl flex flex-col justify-between">
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                          <h4 className="font-extrabold text-indigo-950 text-sm">{skillName}</h4>
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          <h4 className="font-extrabold text-blue-950 text-sm">{skillName}</h4>
                         </div>
-                        <p className="text-xs text-indigo-900 leading-relaxed">{advice}</p>
+                        <p className="text-xs text-blue-900 leading-relaxed">{advice}</p>
                       </div>
                     </div>
                   );

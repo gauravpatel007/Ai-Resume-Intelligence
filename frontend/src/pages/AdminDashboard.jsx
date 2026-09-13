@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import ExploreDashboard from './ExploreDashboard';
 import CandidateComparison from './CandidateComparison';
+import SemanticSearchTab from './SemanticSearchTab';
 
 
 const DEFAULT_COLLECTIONS = [
@@ -15,11 +16,11 @@ const DEFAULT_COLLECTIONS = [
   { id: '5', name: 'Marketing Specialist', color: 'pink', target_job_role: 'Marketing Specialist', required_skills: 'SEO, Content Marketing', min_experience_years: '2', required_degree: 'Any' }
 ];
 
-const AdminDashboard = () => {
+const AdminDashboard = ({ initialView = 'search' }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const [currentView, setCurrentView] = useState('search'); // 'search' or 'audits'
+  const [currentView, setCurrentView] = useState(initialView); // 'search', 'semantic', 'explore', 'compare', 'audits', 'users'
   const [collections, setCollections] = useState([]);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [newCollection, setNewCollection] = useState({ name: '', target_job_role: '', required_skills: '', min_experience_years: '', required_degree: 'Any', color: 'indigo' });
@@ -301,8 +302,15 @@ const AdminDashboard = () => {
       <nav className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm w-full flex-shrink-0">
         <div className="w-full px-8 h-16 flex justify-between items-center">
           <div className="w-1/4 flex items-center">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+            <div 
+              className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity" 
+              onClick={() => {
+                setCurrentView('search');
+                navigate('/admin/dashboard');
+              }}
+              title="Go to Dashboard"
+            >
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-500/20">
                 AI
               </div>
               <div className="font-extrabold text-xl tracking-tight text-slate-800">
@@ -362,6 +370,13 @@ const AdminDashboard = () => {
             <button onClick={() => setCurrentView('explore')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${currentView === 'explore' ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'}`}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               Explore
+            </button>
+            <button onClick={() => setCurrentView('semantic')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-sm transition-colors ${currentView === 'semantic' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}>
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Semantic Search
+              </div>
+              <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded">AI</span>
             </button>
             <button 
               onClick={() => setCurrentView('compare')} 
@@ -457,6 +472,13 @@ const AdminDashboard = () => {
 
         {currentView === 'explore' ? (
           <ExploreDashboard />
+        ) : currentView === 'semantic' ? (
+          <SemanticSearchTab 
+            compareList={compareList}
+            onToggleCompare={(cand) => handleToggleCompare({ stopPropagation: () => {} }, cand)}
+            onExportPdf={handleExportPdf}
+            exportingId={exporting}
+          />
         ) : currentView === 'compare' ? (
           <CandidateComparison
             compareList={compareList}

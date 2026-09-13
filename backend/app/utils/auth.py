@@ -35,6 +35,22 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+RESET_TOKEN_EXPIRE_MINUTES = 15
+
+def create_otp_reset_token(email: str, hashed_code: str) -> str:
+    expires = timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    return create_access_token(data={"sub": email, "type": "otp_password_reset", "code_hash": hashed_code}, expires_delta=expires)
+
+def verify_otp_reset_token(token: str) -> Optional[dict]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "otp_password_reset":
+            return None
+        return {"email": payload.get("sub"), "code_hash": payload.get("code_hash")}
+    except JWTError:
+        return None
+
+
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

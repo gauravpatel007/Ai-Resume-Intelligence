@@ -1,1 +1,10 @@
-backend/dataset/ 
+backend/dataset/
+scratch/
+*.env
+.env
+__pycache__/
+*.pyc
+venv/
+node_modules/
+backend/uploads/embeddings_cache.pt
+backend/uploads/resumes/

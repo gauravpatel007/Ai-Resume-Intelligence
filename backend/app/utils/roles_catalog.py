@@ -251,7 +251,14 @@ def get_all_roles():
     return IT_ROLES_CATALOG
 
 def get_role_by_name(name: str):
+    if not name:
+        return None
+    # Exact match
     for role in IT_ROLES_CATALOG:
         if role["name"].lower() == name.lower():
+            return role
+    # Partial match
+    for role in IT_ROLES_CATALOG:
+        if name.lower() in role["name"].lower() or role["name"].lower() in name.lower():
             return role
     return None

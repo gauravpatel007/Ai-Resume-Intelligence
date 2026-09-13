@@ -11,19 +11,30 @@ import UploadResume from './pages/UploadResume';
 
 import AdminDashboard from './pages/AdminDashboard';
 import ExtractedProfile from './pages/ExtractedProfile';
-
 const Navigation = () => {
   const { user, logout } = useContext(AuthContext);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/60 backdrop-blur-xl border-b border-white/50 shadow-sm w-full">
       <div className="w-full px-8 h-16 flex justify-between items-center">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+        <div 
+          className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity" 
+          onClick={() => {
+            if (user?.role === 'admin') {
+              window.location.href = '/admin/dashboard';
+            } else if (user) {
+              window.location.href = '/candidate/dashboard';
+            } else {
+              window.location.href = '/';
+            }
+          }}
+          title="Go to Dashboard"
+        >
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-500/20">
             AI
           </div>
           <div className="font-extrabold text-xl tracking-tight text-slate-800">
-            Resume<span className="text-gradient">Intel</span>
+            Resume<span className="text-blue-600">Intel</span>
           </div>
         </div>
         <div className="flex gap-4 items-center">
@@ -97,6 +108,7 @@ function App() {
 
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/semantic" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard initialView="semantic" /></ProtectedRoute>} />
           </Routes>
         </Layout>
       </Router>

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import or_, func
 
@@ -195,32 +196,45 @@ def search_candidates(search: SearchQuery, db: Session = Depends(get_db), curren
     db.commit()
         
     # 2. Fast Database Pre-Filtering
+    q_ids = db.query(Candidate.id)
+    
     if search.search_name:
         name_like = f"%{search.search_name}%"
-        matching_ids_tuples = (
-            db.query(Candidate.id)
-            .filter(Candidate.name.ilike(name_like))
-            .all()
-        )
+        q_ids = q_ids.filter(Candidate.name.ilike(name_like))
     else:
         target_role = search.target_job_role
         if target_role and target_role.lower() != "any":
             target_like = f"%{target_role}%"
-            # Fetch matching candidate IDs without Cartesian product join
-            matching_ids_tuples = (
-                db.query(Candidate.id)
-                .outerjoin(Experience, Candidate.id == Experience.candidate_id)
-                .filter(
-                    or_(
-                        Candidate.predicted_job_role.ilike(target_like),
-                        Experience.title.ilike(target_like)
-                    )
+            q_ids = q_ids.outerjoin(Experience, Candidate.id == Experience.candidate_id).filter(
+                or_(
+                    Candidate.predicted_job_role.ilike(target_like),
+                    Experience.title.ilike(target_like)
                 )
-                .distinct()
-                .all()
             )
-        else:
-            matching_ids_tuples = db.query(Candidate.id).all()
+            
+    # Apply strict pre-filters to avoid loading thousands of candidates into memory
+    if search.min_experience_years and search.min_experience_years > 0:
+        q_ids = q_ids.filter(Candidate.total_experience_years >= search.min_experience_years)
+        
+    if search.required_degree and search.required_degree.lower() != "any":
+        req_level = 0
+        if "phd" in search.required_degree.lower() or "doctor" in search.required_degree.lower():
+            req_level = 3
+        elif "master" in search.required_degree.lower():
+            req_level = 2
+        elif "bachelor" in search.required_degree.lower():
+            req_level = 1
+        q_ids = q_ids.filter(Candidate.highest_degree_level >= req_level)
+        
+    if search.required_skills:
+        from sqlalchemy import func
+        from ..models.models import Skill
+        skills_lower = [s.strip().lower() for s in search.required_skills if s.strip()]
+        if skills_lower:
+            # Must have at least ONE of the required skills to even be considered
+            q_ids = q_ids.filter(Candidate.skills.any(func.lower(Skill.name).in_(skills_lower)))
+
+    matching_ids_tuples = q_ids.order_by(Candidate.id.desc()).distinct().limit(500).all()
     
     matching_ids = [t[0] for t in matching_ids_tuples]
     total_candidates = db.query(Candidate.id).count()
@@ -245,7 +259,7 @@ def search_candidates(search: SearchQuery, db: Session = Depends(get_db), curren
         .all()
     )
     
-    # 3. Detailed Scoring
+    # 3. Detailed Scoring - Two Pass System for Speed
     scored_candidates = []
     
     for c in candidates:
@@ -264,16 +278,45 @@ def search_candidates(search: SearchQuery, db: Session = Depends(get_db), curren
             
         aggregated_profile_text = c.combined_profile_text or ("\n\n".join(profile_parts) if profile_parts else "No skills or abilities found in database.")
 
-        breakdown = score_candidate(
+        # Fast Pass: No explanations to avoid regex
+        fast_breakdown = score_candidate(
             candidate=c,
             target_role=search.target_job_role,
             req_skills=search.required_skills,
             pref_skills=search.preferred_skills,
             min_exp=search.min_experience_years,
             req_degree=search.required_degree,
-            profile_text=aggregated_profile_text
+            profile_text=aggregated_profile_text,
+            include_explanations=False
         )
-
+        
+        scored_candidates.append({
+            "c": c,
+            "text": aggregated_profile_text,
+            "total_score": fast_breakdown["total_score"],
+            "id": c.id
+        })
+        
+    # 4. Sort by highest total_score and take Top 5
+    scored_candidates.sort(key=lambda x: (-x["total_score"], x["id"]))
+    top_5_raw = scored_candidates[:5]
+    
+    # 5. Full Pass: Generate explanations only for the top 5
+    top_5_matches = []
+    for raw in top_5_raw:
+        c = raw["c"]
+        text = raw["text"]
+        full_breakdown = score_candidate(
+            candidate=c,
+            target_role=search.target_job_role,
+            req_skills=search.required_skills,
+            pref_skills=search.preferred_skills,
+            min_exp=search.min_experience_years,
+            req_degree=search.required_degree,
+            profile_text=text,
+            include_explanations=True
+        )
+        
         match = CandidateMatch(
             candidate_id=c.id,
             name=c.name or f"Candidate #{c.id}",
@@ -282,20 +325,17 @@ def search_candidates(search: SearchQuery, db: Session = Depends(get_db), curren
             phone=c.phone,
             education_level=c.educations[0].degree if c.educations else None,
             predicted_job_role=c.predicted_job_role,
-            calculated_experience_years=breakdown.pop("calculated_experience_years"),
-            profile_text=aggregated_profile_text,
-            score_breakdown=ScoreBreakdown(**breakdown)
+            calculated_experience_years=full_breakdown.pop("calculated_experience_years"),
+            profile_text=text,
+            score_breakdown=ScoreBreakdown(**full_breakdown)
         )
-        scored_candidates.append(match)
-        
-    # 4. Sort by highest total_score and return Top 5 (with deterministic tie-breaker)
-    scored_candidates.sort(key=lambda x: (-x.score_breakdown.total_score, x.candidate_id))
-    top_5 = scored_candidates[:5]
+        top_5_matches.append(match)
+    
     
     return SearchResponse(
         total_candidates=total_candidates,
         total_filtered=len(candidates),
-        results=top_5
+        results=top_5_matches
     )
 
 from ..schemas.search import ExploreQuery
@@ -448,3 +488,175 @@ def explore_candidates(query: ExploreQuery, db: Session = Depends(get_db), curre
         total_filtered=total_filtered,
         results=paginated_results
     )
+
+from ..schemas.search import SemanticSearchQuery, SemanticMatchResult
+from ..utils.semantic import search_job_description
+import time
+import os
+import pickle
+from sqlalchemy import text
+
+TEXT_CACHE_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "candidates_text_cache.pkl"
+)
+
+_semantic_cache = {
+    "data": None,
+    "dict": None,
+    "timestamp": 0
+}
+
+def get_candidates_semantic_data(db: Session):
+    global _semantic_cache
+    if _semantic_cache["data"] is not None and (time.time() - _semantic_cache["timestamp"] < 3600):
+        return _semantic_cache["data"], _semantic_cache["dict"]
+
+    # Check disk cache first for instant (<0.05s) retrieval
+    if os.path.exists(TEXT_CACHE_FILE):
+        try:
+            with open(TEXT_CACHE_FILE, "rb") as f:
+                cached = pickle.load(f)
+                _semantic_cache["data"] = cached["data"]
+                _semantic_cache["dict"] = cached["dict"]
+                _semantic_cache["timestamp"] = time.time()
+                return _semantic_cache["data"], _semantic_cache["dict"]
+        except Exception:
+            pass
+
+    # Fast SQL query execution instead of loading 1.4 million ORM objects
+    candidates = db.query(
+        Candidate.id, Candidate.name, Candidate.role, Candidate.predicted_job_role,
+        Candidate.total_experience_years, Candidate.highest_degree_level,
+        Candidate.email, Candidate.phone, Candidate.manual_skills, Candidate.combined_profile_text
+    ).all()
+
+    # Fast aggregated skills via PostgreSQL engine
+    skills_map = {}
+    try:
+        skills_q = db.execute(text("""
+            SELECT cs.candidate_id, string_agg(s.name, ', ')
+            FROM candidate_skills cs
+            JOIN skills s ON cs.skill_id = s.id
+            GROUP BY cs.candidate_id
+        """)).fetchall()
+        for row in skills_q:
+            skills_map[row[0]] = row[1]
+    except Exception:
+        pass
+
+    # Fast aggregated abilities via PostgreSQL engine
+    abilities_map = {}
+    try:
+        abilities_q = db.execute(text("""
+            SELECT candidate_id, string_agg(description, '. ')
+            FROM abilities
+            GROUP BY candidate_id
+        """)).fetchall()
+        for row in abilities_q:
+            abilities_map[row[0]] = row[1]
+    except Exception:
+        pass
+
+    candidates_data = []
+    candidates_dict = {}
+    degree_map = {1: "Bachelor's", 2: "Master's", 3: "Ph.D."}
+
+    for c in candidates:
+        cid = c.id
+        s_text = skills_map.get(cid, "")
+        a_text = abilities_map.get(cid, "")
+        
+        parts = []
+        if a_text:
+            parts.append(f"ABILITIES:\n{a_text[:800]}")
+        if s_text:
+            parts.append(f"SKILLS:\n{s_text}")
+        profile_text = c.combined_profile_text or ("\n\n".join(parts) if parts else "No textual profile data available.")
+        
+        skills_list = [s.strip() for s in s_text.split(",") if s.strip()]
+        
+        candidates_data.append((cid, profile_text))
+        candidates_dict[cid] = {
+            "id": cid,
+            "name": c.name or f"Candidate #{cid}",
+            "role": c.role,
+            "predicted_job_role": c.predicted_job_role,
+            "total_experience_years": c.total_experience_years or 0.0,
+            "education_level": degree_map.get(c.highest_degree_level, "Not specified"),
+            "email": c.email,
+            "phone": c.phone,
+            "skills": skills_list,
+            "manual_skills": c.manual_skills,
+            "combined_profile_text": profile_text
+        }
+
+    _semantic_cache["data"] = candidates_data
+    _semantic_cache["dict"] = candidates_dict
+    _semantic_cache["timestamp"] = time.time()
+
+    try:
+        os.makedirs(os.path.dirname(TEXT_CACHE_FILE), exist_ok=True)
+        with open(TEXT_CACHE_FILE, "wb") as f:
+            pickle.dump({"data": candidates_data, "dict": candidates_dict}, f)
+    except Exception:
+        pass
+
+    return candidates_data, candidates_dict
+
+@router.post("/semantic", response_model=List[SemanticMatchResult])
+def semantic_search_candidates(query: SemanticSearchQuery, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can access semantic search")
+        
+    start_time = time.time()
+    candidates_data, candidates_dict = get_candidates_semantic_data(db)
+        
+    # Get raw matches
+    raw_matches = search_job_description(
+        job_description=query.job_description,
+        candidates_data=candidates_data,
+        method=query.method,
+        top_k=query.top_k
+    )
+    
+    results = []
+    req_skills_lower = [s.lower() for s in query.required_skills]
+    
+    for match in raw_matches:
+        c = candidates_dict.get(match["candidate_id"])
+        if not c:
+            continue
+        
+        candidate_extracted_skills = [s.lower() for s in c["skills"]]
+        candidate_manual_skills = [s.strip().lower() for s in (c.get("manual_skills") or "").split(",") if s.strip()]
+        all_candidate_skills = set(candidate_extracted_skills + candidate_manual_skills)
+        
+        matched_req = []
+        missing_req = []
+        for rs in req_skills_lower:
+            if rs in all_candidate_skills:
+                matched_req.append(rs)
+            else:
+                missing_req.append(rs)
+                
+        results.append(SemanticMatchResult(
+            candidate_id=c["id"],
+            name=c["name"],
+            similarity_score=match["similarity_score"],
+            evidence=match["evidence"],
+            matched_required=matched_req,
+            missing_required=missing_req,
+            role=c["role"],
+            predicted_job_role=c["predicted_job_role"] or c["role"],
+            calculated_experience_years=c["total_experience_years"],
+            education_level=c["education_level"],
+            email=c["email"],
+            phone=c["phone"],
+            skills=c["skills"],
+            profile_text=c["combined_profile_text"] or ""
+        ))
+        
+    elapsed = time.time() - start_time
+    print(f"Semantic search completed in {elapsed:.3f}s using {query.method}")
+    
+    return results

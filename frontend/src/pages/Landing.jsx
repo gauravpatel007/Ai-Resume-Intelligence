@@ -15,12 +15,12 @@ const Landing = () => {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-[#f7f8fb]/80 backdrop-blur-md border-b border-[#e6e9ef]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-[#3b5bff] flex items-center justify-center text-white font-bold text-sm shadow-sm">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-500/20">
               AI
             </div>
-            <div className="font-bold text-lg tracking-tight text-[#0b0f17]">
-              ResumeIntelligence
+            <div className="font-extrabold text-xl tracking-tight text-slate-800">
+              Resume<span className="text-blue-600">Intel</span>
             </div>
           </div>
           
@@ -247,10 +247,10 @@ const Landing = () => {
       <footer className="bg-[#f7f8fb] border-t border-[#e6e9ef] py-12">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-[#5a6472]">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-[#3b5bff] flex items-center justify-center text-white font-bold text-[10px]">
+            <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
               AI
             </div>
-            <span className="font-semibold text-[#0b0f17]">ResumeIntelligence © 2026</span>
+            <span className="font-extrabold text-sm tracking-tight text-slate-800">Resume<span className="text-blue-600">Intel</span> © 2026</span>
           </div>
           <div className="flex gap-6 font-medium">
             <a href="#" className="hover:text-[#0b0f17] transition-colors">Privacy</a>
